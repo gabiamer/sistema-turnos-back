@@ -1,4 +1,4 @@
-package com.turnos.turnos_medicos_backend.domain.model;
+package com.turnos.turnos_medicos_backend.medico.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
