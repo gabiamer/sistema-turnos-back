@@ -22,7 +22,7 @@ public class AgendaMedico {
     private Medico medico;
 
     @Column(name = "dia_semana", nullable = false)
-    private Integer diaSemana; // 0=lunes, 6=domingo
+    private Integer diaSemana;
 
     @Column(name = "hora_inicio", nullable = false)
     private LocalTime horaInicio;
