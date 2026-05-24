@@ -1,7 +1,5 @@
 package com.turnos.turnos_medicos_backend.agenda.domain.model;
-
 import com.turnos.turnos_medicos_backend.medico.domain.model.Medico;
-
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
