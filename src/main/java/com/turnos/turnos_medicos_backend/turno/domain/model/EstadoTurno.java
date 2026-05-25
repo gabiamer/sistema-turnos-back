@@ -1,9 +1,7 @@
-package com.turnos.turnos_medicos_backend.turno.domain.model;
+package com.turnos.turnos_medicos_backend.domain.model;
 
 public enum EstadoTurno {
     PENDIENTE,
     CONFIRMADO,
-    CANCELADO,
-    BLOQUEADO,
-    EXPIRADO
+    CANCELADO
 }

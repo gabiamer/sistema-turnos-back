@@ -1,7 +1,5 @@
-package com.turnos.turnos_medicos_backend.turno.domain.model;
+package com.turnos.turnos_medicos_backend.domain.model;
 
-import com.turnos.turnos_medicos_backend.paciente.domain.model.Paciente;
-import com.turnos.turnos_medicos_backend.medico.domain.model.Medico;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -45,12 +43,6 @@ public class Turno {
     @Enumerated(EnumType.STRING)
     private EstadoTurno estado = EstadoTurno.PENDIENTE;
 
-    @Column(name = "bloqueo_expira")
-    private LocalDateTime bloqueoExpira;
-
-    @Column(name = "cancelado_por", length = 100)
-    private String canceladoPor;
-
     @Column(name = "motivo_cancelacion", length = 255)
     private String motivoCancelacion;
 
@@ -59,4 +51,7 @@ public class Turno {
 
     @Column(name = "creado_en")
     private LocalDateTime creadoEn = LocalDateTime.now();
+
+    // Fitness function: un turno por paciente por día
+    // garantizado por el uniqueConstraint de arriba
 }
