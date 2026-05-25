@@ -9,18 +9,13 @@ import java.util.Optional;
 
 public interface TurnoRepository {
 
-    // Guarda o actualiza un turno
     Turno save(Turno turno);
 
-    // Busca por ID (para confirmar o cancelar)
     Optional<Turno> findById(Long id);
 
-    // Todos los turnos de un paciente (para "Mis Turnos")
     List<Turno> findByPacienteId(Long pacienteId);
 
-    // Turnos de un médico en una fecha (para verificar disponibilidad)
     List<Turno> findByMedicoIdAndFecha(Long medicoId, LocalDate fecha);
 
-    // Turnos bloqueados que ya expiraron (para el job de limpieza)
-    List<Turno> findByEstadoAndBloqueoExpirasBefore(EstadoTurno estado, LocalDateTime ahora);
+    List<Turno> findByEstadoAndBloqueoExpiraBefore(EstadoTurno estado, LocalDateTime ahora);
 }
