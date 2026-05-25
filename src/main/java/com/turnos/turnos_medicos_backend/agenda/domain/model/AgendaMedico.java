@@ -1,5 +1,6 @@
-package com.turnos.turnos_medicos_backend.domain.model;
+package com.turnos.turnos_medicos_backend.agenda.domain.model;
 
+import com.turnos.turnos_medicos_backend.medico.domain.model.Medico;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalTime;
@@ -21,7 +22,7 @@ public class AgendaMedico {
     private Medico medico;
 
     @Column(name = "dia_semana", nullable = false)
-    private Integer diaSemana; // 0=lunes, 6=domingo
+    private Integer diaSemana;
 
     @Column(name = "hora_inicio", nullable = false)
     private LocalTime horaInicio;
