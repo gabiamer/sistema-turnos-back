@@ -1,6 +1,7 @@
 package com.turnos.turnos_medicos_backend.turno.infrastructure;
 
 import com.turnos.turnos_medicos_backend.turno.application.DisponibilidadService;
+import com.turnos.turnos_medicos_backend.turno.domain.model.AgendaSlotDTO;
 import com.turnos.turnos_medicos_backend.turno.domain.model.SlotDTO;
 import com.turnos.turnos_medicos_backend.turno.domain.model.SlotMedicoDTO;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,18 +38,13 @@ public class DisponibilidadController {
         return ResponseEntity.ok(resultado);
     }
 
-    /**
-     * GET /api/medicos/{medicoId}/agenda-semana?semana=YYYY-MM-DD
-     * Nuevo endpoint para la vista del médico.
-     * Devuelve slots enriquecidos con datos del turno y paciente:
-     * { fecha, hora, disponible, bloqueado, turno?: { id, estado, paciente: { id, nombre, apellido, ci } } }
-     */
+    /** Vista del médico: slots enriquecidos con turno + paciente */
     @GetMapping("/api/medicos/{medicoId}/agenda-semana")
-    public ResponseEntity<List<SlotMedicoDTO>> getAgendaSemana(
+    public ResponseEntity<List<AgendaSlotDTO>> getAgendaSemana(
             @PathVariable Long medicoId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate semana) {
 
-        List<SlotMedicoDTO> slots = disponibilidadService.generarSlotsParaMedico(medicoId, semana);
+        List<AgendaSlotDTO> slots = disponibilidadService.generarAgendaSemana(medicoId, semana);
         return ResponseEntity.ok(slots);
     }
 }

@@ -14,11 +14,14 @@ public class CancelarTurnoService {
 
     private final TurnoRepository turnoRepository;
     private final IEventPublisher eventPublisher;
+    private final NotificacionTurnoService notificacionService;
 
     public CancelarTurnoService(TurnoRepository turnoRepository,
-                                 IEventPublisher eventPublisher) {
+                                 IEventPublisher eventPublisher,
+                                 NotificacionTurnoService notificacionService) {
         this.turnoRepository = turnoRepository;
         this.eventPublisher = eventPublisher;
+        this.notificacionService = notificacionService;
     }
 
     public List<Turno> listarPorPaciente(Long pacienteId) {
@@ -54,31 +57,23 @@ public class CancelarTurnoService {
         return cancelado;
     }
 
-    /**
-     * FIX — El MÉDICO cancela un turno de su agenda.
-     * No requiere validación de ownership por paciente.
-     * Sí valida que el turno no esté ya cancelado o concluido.
-     * La restricción de 2h NO aplica cuando cancela el médico
-     * (el médico puede tener una urgencia en cualquier momento).
-     */
-    public Turno cancelarTurnoMedico(Long turnoId, String motivo) {
+    /** CU-médico: cancela el turno y notifica al paciente por los canales indicados */
+    public Turno cancelarPorMedico(Long turnoId, String motivo, List<String> canales) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new MotivoRequeridoException("El motivo de cancelación es requerido");
+        }
+
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
 
-        if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new YaCanceladoException("El turno ya está cancelado");
-        }
-        if (turno.getEstado() == EstadoTurno.CONCLUIDA) {
-            throw new EstadoInvalidoException("No se puede cancelar un turno ya concluido");
-        }
-
         turno.setEstado(EstadoTurno.CANCELADO);
-        turno.setCanceladoPor("medico:" + turno.getMedico().getId());
+        turno.setCanceladoPor("MEDICO");
         turno.setMotivoCancelacion(motivo);
         turno.setCanceladoEn(LocalDateTime.now());
 
         Turno cancelado = turnoRepository.save(turno);
-        eventPublisher.publicar("TURNO_CANCELADO_POR_MEDICO", cancelado.getId());
+        notificacionService.notificarCancelacion(cancelado, motivo, canales);
+        eventPublisher.publicar("TURNO_CANCELADO", cancelado.getId());
         return cancelado;
     }
 
@@ -89,10 +84,7 @@ public class CancelarTurnoService {
     public static class FueraDePlazoException extends RuntimeException {
         public FueraDePlazoException(String msg) { super(msg); }
     }
-    public static class YaCanceladoException extends RuntimeException {
-        public YaCanceladoException(String msg) { super(msg); }
-    }
-    public static class EstadoInvalidoException extends RuntimeException {
-        public EstadoInvalidoException(String msg) { super(msg); }
+    public static class MotivoRequeridoException extends RuntimeException {
+        public MotivoRequeridoException(String msg) { super(msg); }
     }
 }
