@@ -18,4 +18,7 @@ public interface TurnoRepository {
     List<Turno> findByMedicoIdAndFecha(Long medicoId, LocalDate fecha);
 
     List<Turno> findByEstadoAndBloqueoExpiraBefore(EstadoTurno estado, LocalDateTime ahora);
+
+    /** Todos los turnos de un médico (para construir la vista médico) */
+    List<Turno> findByMedicoId(Long medicoId);
 }

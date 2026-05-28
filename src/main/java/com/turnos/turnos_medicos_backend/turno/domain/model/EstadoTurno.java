@@ -5,5 +5,6 @@ public enum EstadoTurno {
     CONFIRMADO,
     CANCELADO,
     BLOQUEADO,
-    EXPIRADO
+    EXPIRADO,
+    CONCLUIDA
 }

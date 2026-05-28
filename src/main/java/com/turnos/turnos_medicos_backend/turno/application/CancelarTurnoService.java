@@ -28,17 +28,19 @@ public class CancelarTurnoService {
         return turnoRepository.findByPacienteId(pacienteId);
     }
 
-    /** CU-02: cancela si faltan más de 2h para el turno */
+    /**
+     * CU-02: El PACIENTE cancela su propio turno.
+     * Valida que el turno pertenezca al paciente y que falten más de 2h.
+     */
     public Turno cancelarTurno(Long turnoId, Long pacienteId, String motivo) {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
 
-        // Regla: solo el paciente dueño puede cancelar
+        // Solo el paciente dueño puede usar este flujo
         if (!turno.getPaciente().getId().equals(pacienteId)) {
             throw new NoAutorizadoException("No autorizado");
         }
 
-        // Regla: debe faltar más de 2 horas
         LocalDateTime limiteCancelacion = LocalDateTime.of(turno.getFecha(), turno.getHora())
                 .minusHours(2);
         if (LocalDateTime.now().isAfter(limiteCancelacion)) {
@@ -46,7 +48,7 @@ public class CancelarTurnoService {
         }
 
         turno.setEstado(EstadoTurno.CANCELADO);
-        turno.setCanceladoPor(pacienteId.toString());
+        turno.setCanceladoPor("paciente:" + pacienteId);
         turno.setMotivoCancelacion(motivo);
         turno.setCanceladoEn(LocalDateTime.now());
 

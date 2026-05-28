@@ -32,9 +32,10 @@ public class DisponibilidadService {
         this.turnoRepository = turnoRepository;
     }
 
+    // ── Método original — sin cambios, sigue siendo usado por el endpoint público ──
+
     public List<SlotDTO> generarSlots(Long medicoId, LocalDate semana) {
         LocalDate lunes = semana.with(DayOfWeek.MONDAY);
-
         List<AgendaMedico> agendas = agendaMedicoRepository.findByMedicoId(medicoId);
         List<SlotDTO> slots = new ArrayList<>();
 
@@ -49,13 +50,12 @@ public class DisponibilidadService {
                         LocalTime cursor = agenda.getHoraInicio();
                         while (cursor.isBefore(agenda.getHoraFin())) {
                             boolean disponible = disponibilidadPort.estaDisponible(medicoId, fecha, cursor);
-                            boolean bloqueado = disponibilidadPort.estaBloqueado(medicoId, fecha);
+                            boolean bloqueado  = disponibilidadPort.estaBloqueado(medicoId, fecha);
                             slots.add(new SlotDTO(fecha, cursor, disponible, bloqueado));
                             cursor = cursor.plusMinutes(agenda.getDuracionMinutos());
                         }
                     });
         }
-
         return slots;
     }
 
@@ -70,10 +70,7 @@ public class DisponibilidadService {
                                     (t.getEstado() == EstadoTurno.CONFIRMADO ||
                                      t.getEstado() == EstadoTurno.PENDIENTE)
                             );
-                    if (ocupado) {
-                        return new SlotDTO(slot.fecha(), slot.hora(), false, slot.bloqueado());
-                    }
-                    return slot;
+                    return ocupado ? new SlotDTO(slot.fecha(), slot.hora(), false, slot.bloqueado()) : slot;
                 })
                 .toList();
     }
