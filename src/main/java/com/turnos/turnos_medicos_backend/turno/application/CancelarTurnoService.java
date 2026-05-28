@@ -14,11 +14,14 @@ public class CancelarTurnoService {
 
     private final TurnoRepository turnoRepository;
     private final IEventPublisher eventPublisher;
+    private final NotificacionTurnoService notificacionService;
 
     public CancelarTurnoService(TurnoRepository turnoRepository,
-                                 IEventPublisher eventPublisher) {
+                                 IEventPublisher eventPublisher,
+                                 NotificacionTurnoService notificacionService) {
         this.turnoRepository = turnoRepository;
         this.eventPublisher = eventPublisher;
+        this.notificacionService = notificacionService;
     }
 
     public List<Turno> listarPorPaciente(Long pacienteId) {
@@ -52,11 +55,34 @@ public class CancelarTurnoService {
         return cancelado;
     }
 
+    /** CU-médico: cancela el turno y notifica al paciente por los canales indicados */
+    public Turno cancelarPorMedico(Long turnoId, String motivo, List<String> canales) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new MotivoRequeridoException("El motivo de cancelación es requerido");
+        }
+
+        Turno turno = turnoRepository.findById(turnoId)
+                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+
+        turno.setEstado(EstadoTurno.CANCELADO);
+        turno.setCanceladoPor("MEDICO");
+        turno.setMotivoCancelacion(motivo);
+        turno.setCanceladoEn(LocalDateTime.now());
+
+        Turno cancelado = turnoRepository.save(turno);
+        notificacionService.notificarCancelacion(cancelado, motivo, canales);
+        eventPublisher.publicar("TURNO_CANCELADO", cancelado.getId());
+        return cancelado;
+    }
+
     // ── Excepciones de dominio ────────────────────────────────────────────────
     public static class NoAutorizadoException extends RuntimeException {
         public NoAutorizadoException(String msg) { super(msg); }
     }
     public static class FueraDePlazoException extends RuntimeException {
         public FueraDePlazoException(String msg) { super(msg); }
+    }
+    public static class MotivoRequeridoException extends RuntimeException {
+        public MotivoRequeridoException(String msg) { super(msg); }
     }
 }

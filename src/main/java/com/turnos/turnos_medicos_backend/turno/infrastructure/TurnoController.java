@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -74,6 +75,18 @@ public class TurnoController {
         }
     }
 
+    /** DELETE /api/turnos/{id}/medico */
+    @DeleteMapping("/{id}/medico")
+    public ResponseEntity<?> cancelarMedico(@PathVariable Long id,
+                                             @RequestBody CancelarMedicoRequest req) {
+        try {
+            cancelarTurnoService.cancelarPorMedico(id, req.motivoCancelacion(), req.canales());
+            return ResponseEntity.ok(Map.of("message", "Turno cancelado"));
+        } catch (CancelarTurnoService.MotivoRequeridoException e) {
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── Request records ───────────────────────────────────────────────────────
     record SolicitarRequest(
             Long pacienteId,
@@ -83,4 +96,5 @@ public class TurnoController {
     ) {}
 
     record CancelarRequest(Long pacienteId, String motivo) {}
+    record CancelarMedicoRequest(String motivoCancelacion, List<String> canales) {}
 }
