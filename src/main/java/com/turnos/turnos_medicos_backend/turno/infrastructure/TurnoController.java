@@ -69,7 +69,10 @@ public class TurnoController {
         return ResponseEntity.ok(cancelarTurnoService.listarPorPaciente(pacienteId));
     }
 
-    /** DELETE /api/turnos/{id} */
+    /**
+     * DELETE /api/turnos/{id}
+     * Cancelación por el PACIENTE — requiere pacienteId para validar ownership.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> cancelar(@PathVariable Long id,
                                        @RequestBody CancelarRequest req) {
@@ -85,6 +88,30 @@ public class TurnoController {
             return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
         } catch (CancelarTurnoService.FueraDePlazoException e) {
             return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * DELETE /api/turnos/{id}/medico
+     * FIX — Cancelación por el MÉDICO desde su vista de agenda.
+     * No requiere pacienteId. Incluye notificación al paciente vía canales seleccionados.
+     */
+    @DeleteMapping("/{id}/medico")
+    public ResponseEntity<?> cancelarMedico(@PathVariable Long id,
+                                             @RequestBody CancelarMedicoRequest req) {
+        if (req.motivoCancelacion() == null || req.motivoCancelacion().isBlank()) {
+            return ResponseEntity.status(400).body(Map.of("error", "motivo es requerido"));
+        }
+        try {
+            Turno turno = cancelarTurnoService.cancelarTurnoMedico(id, req.motivoCancelacion());
+            notificacionService.notificar(turno, req.canales(), req.motivoCancelacion());
+            return ResponseEntity.noContent().build();
+        } catch (CancelarTurnoService.YaCanceladoException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        } catch (CancelarTurnoService.EstadoInvalidoException e) {
+            return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -108,7 +135,10 @@ public class TurnoController {
         }
     }
 
-    /** PUT /api/turnos/{id}/reprogramar */
+    /**
+     * PUT /api/turnos/{id}/reprogramar
+     * FIX — maneja la nueva excepción PacienteConTurnoEseDiaException (409).
+     */
     @PutMapping("/{id}/reprogramar")
     public ResponseEntity<?> reprogramar(@PathVariable Long id,
                                           @RequestBody ReprogramarRequest req) {
@@ -119,12 +149,16 @@ public class TurnoController {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         } catch (ConcluirReprogramarTurnoService.SlotOcupadoException e) {
             return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        } catch (ConcluirReprogramarTurnoService.PacienteConTurnoEseDiaException e) {
+            // FIX: el paciente ya tiene otro turno ese día — 409 con mensaje claro
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
         } catch (ConcluirReprogramarTurnoService.EstadoInvalidoException e) {
             return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
         }
     }
 
     // ── Request records ───────────────────────────────────────────────────────
+
     record SolicitarRequest(
             Long pacienteId,
             Long medicoId,
@@ -136,6 +170,12 @@ public class TurnoController {
             Long pacienteId,
             String motivoCancelacion,
             String motivo,
+            List<String> canales
+    ) {}
+
+    /** FIX: request para cancelación médica — sin pacienteId */
+    record CancelarMedicoRequest(
+            String motivoCancelacion,
             List<String> canales
     ) {}
 
