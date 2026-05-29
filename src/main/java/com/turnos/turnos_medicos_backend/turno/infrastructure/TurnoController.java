@@ -88,6 +88,23 @@ public class TurnoController {
         }
     }
 
+    /** DELETE /api/turnos/{id}/medico */
+    @DeleteMapping("/{id}/medico")
+    public ResponseEntity<?> cancelarMedico(@PathVariable Long id,
+                                             @RequestBody CancelarMedicoRequest req) {
+        try {
+            Turno turno = cancelarTurnoService.cancelarPorMedico(id, req.motivoCancelacion());
+            notificacionService.notificar(turno, req.canales(), req.motivoCancelacion());
+            return ResponseEntity.ok(Map.of("message", "Turno cancelado"));
+        } catch (CancelarTurnoService.MotivoRequeridoException e) {
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (CancelarTurnoService.FueraDePlazoException e) {
+            return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
+        } catch (CancelarTurnoService.TurnoNoEncontradoException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     /** PATCH /api/turnos/{id}/estado */
     @PatchMapping("/{id}/estado")
     public ResponseEntity<?> cambiarEstado(@PathVariable Long id,
@@ -138,6 +155,8 @@ public class TurnoController {
             String motivo,
             List<String> canales
     ) {}
+
+    record CancelarMedicoRequest(String motivoCancelacion, List<String> canales) {}
 
     record EstadoRequest(String estado) {}
 

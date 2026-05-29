@@ -52,11 +52,42 @@ public class CancelarTurnoService {
         return cancelado;
     }
 
+    /** CU-médico: cancela el turno; las notificaciones se envían desde el controlador */
+    public Turno cancelarPorMedico(Long turnoId, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new MotivoRequeridoException("El motivo de cancelación es requerido");
+        }
+
+        Turno turno = turnoRepository.findById(turnoId)
+                .orElseThrow(() -> new TurnoNoEncontradoException("Turno no encontrado: " + turnoId));
+
+        LocalDateTime limiteCancelacion = LocalDateTime.of(turno.getFecha(), turno.getHora())
+                .minusHours(2);
+        if (LocalDateTime.now().isAfter(limiteCancelacion)) {
+            throw new FueraDePlazoException("No se puede cancelar con menos de 2hs de anticipación");
+        }
+
+        turno.setEstado(EstadoTurno.CANCELADO);
+        turno.setCanceladoPor("MEDICO");
+        turno.setMotivoCancelacion(motivo);
+        turno.setCanceladoEn(LocalDateTime.now());
+
+        Turno cancelado = turnoRepository.save(turno);
+        eventPublisher.publicar("TURNO_CANCELADO", cancelado.getId());
+        return cancelado;
+    }
+
     // ── Excepciones de dominio ────────────────────────────────────────────────
     public static class NoAutorizadoException extends RuntimeException {
         public NoAutorizadoException(String msg) { super(msg); }
     }
     public static class FueraDePlazoException extends RuntimeException {
         public FueraDePlazoException(String msg) { super(msg); }
+    }
+    public static class MotivoRequeridoException extends RuntimeException {
+        public MotivoRequeridoException(String msg) { super(msg); }
+    }
+    public static class TurnoNoEncontradoException extends RuntimeException {
+        public TurnoNoEncontradoException(String msg) { super(msg); }
     }
 }
