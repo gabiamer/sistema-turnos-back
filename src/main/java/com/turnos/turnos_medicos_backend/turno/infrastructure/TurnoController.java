@@ -1,10 +1,12 @@
 package com.turnos.turnos_medicos_backend.turno.infrastructure;
 
 import com.turnos.turnos_medicos_backend.turno.application.CancelarTurnoService;
+import com.turnos.turnos_medicos_backend.turno.application.ConcluirReprogramarTurnoService;
+import com.turnos.turnos_medicos_backend.turno.application.NotificacionService;
 import com.turnos.turnos_medicos_backend.turno.application.SolicitarTurnoService;
+import com.turnos.turnos_medicos_backend.turno.domain.model.EstadoTurno;
 import com.turnos.turnos_medicos_backend.turno.domain.model.Turno;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,11 +22,17 @@ public class TurnoController {
 
     private final SolicitarTurnoService solicitarTurnoService;
     private final CancelarTurnoService cancelarTurnoService;
+    private final ConcluirReprogramarTurnoService concluirReprogramarTurnoService;
+    private final NotificacionService notificacionService;
 
     public TurnoController(SolicitarTurnoService solicitarTurnoService,
-                            CancelarTurnoService cancelarTurnoService) {
+                            CancelarTurnoService cancelarTurnoService,
+                            ConcluirReprogramarTurnoService concluirReprogramarTurnoService,
+                            NotificacionService notificacionService) {
         this.solicitarTurnoService = solicitarTurnoService;
         this.cancelarTurnoService = cancelarTurnoService;
+        this.concluirReprogramarTurnoService = concluirReprogramarTurnoService;
+        this.notificacionService = notificacionService;
     }
 
     /** POST /api/turnos/solicitar */
@@ -65,9 +73,14 @@ public class TurnoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> cancelar(@PathVariable Long id,
                                        @RequestBody CancelarRequest req) {
+        String motivo = req.motivoCancelacion() != null ? req.motivoCancelacion() : req.motivo();
+        if (motivo == null || motivo.isBlank()) {
+            return ResponseEntity.status(400).body(Map.of("error", "motivo es requerido"));
+        }
         try {
-            cancelarTurnoService.cancelarTurno(id, req.pacienteId(), req.motivo());
-            return ResponseEntity.ok(Map.of("message", "Turno cancelado"));
+            Turno turno = cancelarTurnoService.cancelarTurno(id, req.pacienteId(), motivo);
+            notificacionService.notificar(turno, req.canales(), motivo);
+            return ResponseEntity.noContent().build();
         } catch (CancelarTurnoService.NoAutorizadoException e) {
             return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
         } catch (CancelarTurnoService.FueraDePlazoException e) {
@@ -80,10 +93,51 @@ public class TurnoController {
     public ResponseEntity<?> cancelarMedico(@PathVariable Long id,
                                              @RequestBody CancelarMedicoRequest req) {
         try {
-            cancelarTurnoService.cancelarPorMedico(id, req.motivoCancelacion(), req.canales());
+            Turno turno = cancelarTurnoService.cancelarPorMedico(id, req.motivoCancelacion());
+            notificacionService.notificar(turno, req.canales(), req.motivoCancelacion());
             return ResponseEntity.ok(Map.of("message", "Turno cancelado"));
         } catch (CancelarTurnoService.MotivoRequeridoException e) {
             return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (CancelarTurnoService.FueraDePlazoException e) {
+            return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
+        } catch (CancelarTurnoService.TurnoNoEncontradoException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** PATCH /api/turnos/{id}/estado */
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<?> cambiarEstado(@PathVariable Long id,
+                                            @RequestBody EstadoRequest req) {
+        EstadoTurno nuevoEstado;
+        try {
+            nuevoEstado = EstadoTurno.valueOf(req.estado().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(422).body(Map.of("error", "Estado inválido"));
+        }
+        try {
+            Turno turno = concluirReprogramarTurnoService.cambiarEstado(id, nuevoEstado);
+            return ResponseEntity.ok(turno);
+        } catch (ConcluirReprogramarTurnoService.TurnoNoEncontradoException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        } catch (ConcluirReprogramarTurnoService.EstadoInvalidoException e) {
+            return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** PUT /api/turnos/{id}/reprogramar */
+    @PutMapping("/{id}/reprogramar")
+    public ResponseEntity<?> reprogramar(@PathVariable Long id,
+                                          @RequestBody ReprogramarRequest req) {
+        try {
+            Turno turno = concluirReprogramarTurnoService.reprogramar(id, req.nuevaFecha(), req.nuevaHora());
+            return ResponseEntity.ok(turno);
+        } catch (ConcluirReprogramarTurnoService.TurnoNoEncontradoException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        } catch (ConcluirReprogramarTurnoService.SlotOcupadoException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        } catch (ConcluirReprogramarTurnoService.EstadoInvalidoException e) {
+            return ResponseEntity.status(422).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -95,6 +149,19 @@ public class TurnoController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora
     ) {}
 
-    record CancelarRequest(Long pacienteId, String motivo) {}
+    record CancelarRequest(
+            Long pacienteId,
+            String motivoCancelacion,
+            String motivo,
+            List<String> canales
+    ) {}
+
     record CancelarMedicoRequest(String motivoCancelacion, List<String> canales) {}
+
+    record EstadoRequest(String estado) {}
+
+    record ReprogramarRequest(
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nuevaFecha,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime nuevaHora
+    ) {}
 }

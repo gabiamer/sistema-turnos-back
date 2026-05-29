@@ -14,33 +14,28 @@ public class CancelarTurnoService {
 
     private final TurnoRepository turnoRepository;
     private final IEventPublisher eventPublisher;
-    private final NotificacionTurnoService notificacionService;
 
     public CancelarTurnoService(TurnoRepository turnoRepository,
-                                 IEventPublisher eventPublisher,
-                                 NotificacionTurnoService notificacionService) {
+                                 IEventPublisher eventPublisher) {
         this.turnoRepository = turnoRepository;
         this.eventPublisher = eventPublisher;
-        this.notificacionService = notificacionService;
     }
 
     public List<Turno> listarPorPaciente(Long pacienteId) {
         return turnoRepository.findByPacienteId(pacienteId);
     }
 
-    /**
-     * CU-02: El PACIENTE cancela su propio turno.
-     * Valida que el turno pertenezca al paciente y que falten más de 2h.
-     */
+    /** CU-02: cancela si faltan más de 2h para el turno */
     public Turno cancelarTurno(Long turnoId, Long pacienteId, String motivo) {
         Turno turno = turnoRepository.findById(turnoId)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
 
-        // Solo el paciente dueño puede usar este flujo
+        // Regla: solo el paciente dueño puede cancelar
         if (!turno.getPaciente().getId().equals(pacienteId)) {
             throw new NoAutorizadoException("No autorizado");
         }
 
+        // Regla: debe faltar más de 2 horas
         LocalDateTime limiteCancelacion = LocalDateTime.of(turno.getFecha(), turno.getHora())
                 .minusHours(2);
         if (LocalDateTime.now().isAfter(limiteCancelacion)) {
@@ -48,7 +43,7 @@ public class CancelarTurnoService {
         }
 
         turno.setEstado(EstadoTurno.CANCELADO);
-        turno.setCanceladoPor("paciente:" + pacienteId);
+        turno.setCanceladoPor(pacienteId.toString());
         turno.setMotivoCancelacion(motivo);
         turno.setCanceladoEn(LocalDateTime.now());
 
@@ -57,14 +52,20 @@ public class CancelarTurnoService {
         return cancelado;
     }
 
-    /** CU-médico: cancela el turno y notifica al paciente por los canales indicados */
-    public Turno cancelarPorMedico(Long turnoId, String motivo, List<String> canales) {
+    /** CU-médico: cancela el turno; las notificaciones se envían desde el controlador */
+    public Turno cancelarPorMedico(Long turnoId, String motivo) {
         if (motivo == null || motivo.isBlank()) {
             throw new MotivoRequeridoException("El motivo de cancelación es requerido");
         }
 
         Turno turno = turnoRepository.findById(turnoId)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+                .orElseThrow(() -> new TurnoNoEncontradoException("Turno no encontrado: " + turnoId));
+
+        LocalDateTime limiteCancelacion = LocalDateTime.of(turno.getFecha(), turno.getHora())
+                .minusHours(2);
+        if (LocalDateTime.now().isAfter(limiteCancelacion)) {
+            throw new FueraDePlazoException("No se puede cancelar con menos de 2hs de anticipación");
+        }
 
         turno.setEstado(EstadoTurno.CANCELADO);
         turno.setCanceladoPor("MEDICO");
@@ -72,7 +73,6 @@ public class CancelarTurnoService {
         turno.setCanceladoEn(LocalDateTime.now());
 
         Turno cancelado = turnoRepository.save(turno);
-        notificacionService.notificarCancelacion(cancelado, motivo, canales);
         eventPublisher.publicar("TURNO_CANCELADO", cancelado.getId());
         return cancelado;
     }
@@ -86,5 +86,8 @@ public class CancelarTurnoService {
     }
     public static class MotivoRequeridoException extends RuntimeException {
         public MotivoRequeridoException(String msg) { super(msg); }
+    }
+    public static class TurnoNoEncontradoException extends RuntimeException {
+        public TurnoNoEncontradoException(String msg) { super(msg); }
     }
 }
