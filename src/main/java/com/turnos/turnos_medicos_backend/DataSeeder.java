@@ -8,6 +8,8 @@ import com.turnos.turnos_medicos_backend.medico.domain.model.Medico;
 import com.turnos.turnos_medicos_backend.medico.domain.port.MedicoRepository;
 import com.turnos.turnos_medicos_backend.paciente.domain.model.Paciente;
 import com.turnos.turnos_medicos_backend.paciente.domain.port.PacienteRepository;
+import com.turnos.turnos_medicos_backend.secretaria.domain.model.Recepcionista;
+import com.turnos.turnos_medicos_backend.secretaria.domain.port.RecepcionistaRepository;
 import com.turnos.turnos_medicos_backend.turno.domain.model.EstadoTurno;
 import com.turnos.turnos_medicos_backend.turno.domain.model.Turno;
 import com.turnos.turnos_medicos_backend.turno.domain.port.TurnoRepository;
@@ -25,23 +27,25 @@ public class DataSeeder implements CommandLineRunner {
     private final AgendaMedicoRepository agendaMedicoRepository;
     private final BloqueoDiaRepository bloqueoDiaRepository;
     private final TurnoRepository turnoRepository;
+    private final RecepcionistaRepository recepcionistaRepository;
 
     public DataSeeder(MedicoRepository medicoRepository,
                       PacienteRepository pacienteRepository,
                       AgendaMedicoRepository agendaMedicoRepository,
                       BloqueoDiaRepository bloqueoDiaRepository,
-                      TurnoRepository turnoRepository) {
+                      TurnoRepository turnoRepository,
+                      RecepcionistaRepository recepcionistaRepository) {
         this.medicoRepository = medicoRepository;
         this.pacienteRepository = pacienteRepository;
         this.agendaMedicoRepository = agendaMedicoRepository;
         this.bloqueoDiaRepository = bloqueoDiaRepository;
         this.turnoRepository = turnoRepository;
+        this.recepcionistaRepository = recepcionistaRepository;
     }
 
     @Override
     public void run(String... args) {
         try {
-            // Solo carga si no hay médicos
             if (medicoRepository.findAll().isEmpty()) {
                 cargarDatos();
             } else {
@@ -78,6 +82,16 @@ public class DataSeeder implements CommandLineRunner {
                 .email("pgutierrez@mail.com").telefono("79876543")
                 .fechaNacimiento(LocalDate.of(1985, 7, 22)).build());
 
+        Paciente p3 = pacienteRepository.save(Paciente.builder()
+                .ci("11223344").nombre("Ana").apellido("Flores")
+                .email("aflores@mail.com").telefono("76543210")
+                .fechaNacimiento(LocalDate.of(1995, 11, 3)).build());
+
+        Paciente p4 = pacienteRepository.save(Paciente.builder()
+                .ci("44332211").nombre("Jorge").apellido("Mamani")
+                .email("jmamani@mail.com").telefono("71122334")
+                .fechaNacimiento(LocalDate.of(2000, 6, 18)).build());
+
         // ── Agendas ───────────────────────────────────────────
         for (int dia = 1; dia <= 5; dia++) {
             agendaMedicoRepository.save(AgendaMedico.builder()
@@ -110,7 +124,7 @@ public class DataSeeder implements CommandLineRunner {
                 .fechaFin(LocalDate.of(2026, 6, 2))
                 .motivo("Congreso de Cardiologia").build());
 
-        // ── Turnos ────────────────────────────────────────────
+        // ── Turnos futuros ────────────────────────────────────
         turnoRepository.save(Turno.builder()
                 .medico(m1).paciente(p1)
                 .fecha(LocalDate.of(2026, 6, 1))
@@ -130,6 +144,40 @@ public class DataSeeder implements CommandLineRunner {
                 .estado(EstadoTurno.CANCELADO)
                 .canceladoPor("paciente")
                 .motivoCancelacion("No puede asistir").build());
+
+        // ── Recepcionistas ────────────────────────────────────
+        Recepcionista r1 = recepcionistaRepository.save(Recepcionista.builder()
+                .nombre("Maria").apellido("Lopez").email("maria.lopez@clinica.com").rol("SECRETARIA").build());
+
+        Recepcionista r2 = recepcionistaRepository.save(Recepcionista.builder()
+                .nombre("Carlos").apellido("Ruiz").email("carlos.ruiz@clinica.com").rol("SECRETARIA").build());
+
+        // ── Turnos de hoy (para /secretaria/turnos/hoy) ───────
+        LocalDate hoy = LocalDate.now();
+
+        turnoRepository.save(Turno.builder()
+                .medico(m1).paciente(p1)
+                .fecha(hoy).hora(LocalTime.of(9, 0))
+                .estado(EstadoTurno.CONFIRMADO)
+                .agendadoPor(r1.getId()).build());
+
+        turnoRepository.save(Turno.builder()
+                .medico(m1).paciente(p2)
+                .fecha(hoy).hora(LocalTime.of(9, 30))
+                .estado(EstadoTurno.CONFIRMADO)
+                .agendadoPor(r1.getId()).build());
+
+        turnoRepository.save(Turno.builder()
+                .medico(m1).paciente(p3)
+                .fecha(hoy).hora(LocalTime.of(10, 0))
+                .estado(EstadoTurno.CONFIRMADO)
+                .agendadoPor(r2.getId()).build());
+
+        turnoRepository.save(Turno.builder()
+                .medico(m1).paciente(p4)
+                .fecha(hoy).hora(LocalTime.of(10, 30))
+                .estado(EstadoTurno.CONFIRMADO)
+                .agendadoPor(r2.getId()).build());
 
         System.out.println("✅ DataSeeder: datos de prueba cargados");
     }
