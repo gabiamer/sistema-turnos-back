@@ -17,4 +17,7 @@ public interface PacienteRepository {
 
     // Busca por nombre (búsqueda parcial en el front)
     List<Paciente> findByNombreContaining(String nombre);
+
+    // Busca por nombre o apellido (insensible a mayúsculas)
+    List<Paciente> findByNombreContainingIgnoreCaseOrApellidoContainingIgnoreCase(String nombre, String apellido);
 }
