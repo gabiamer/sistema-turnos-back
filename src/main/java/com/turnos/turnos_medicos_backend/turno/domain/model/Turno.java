@@ -62,4 +62,7 @@ public class Turno {
 
     @Column(name = "agendado_por")
     private Long agendadoPor;
+
+    @Column(name = "ausente_registrado_en")
+    private LocalDateTime ausenteRegistradoEn;
 }
