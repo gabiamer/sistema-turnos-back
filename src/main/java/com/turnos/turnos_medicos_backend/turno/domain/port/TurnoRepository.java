@@ -24,4 +24,14 @@ public interface TurnoRepository {
 
     /** Todos los turnos de una fecha concreta (para la vista de hoy de secretaría) */
     List<Turno> findByFecha(LocalDate fecha);
+    
+
+    /** Turnos de un rango de fechas con un estado dado */
+    List<Turno> findByFechaBetweenAndEstado(LocalDate inicio, LocalDate fin, EstadoTurno estado);
+
+    /** Todos los turnos en un rango de fechas */
+    List<Turno> findByFechaBetween(LocalDate inicio, LocalDate fin);
+
+    /** Turnos de una fecha con un estado dado */
+    List<Turno> findByFechaAndEstado(LocalDate fecha, EstadoTurno estado);
 }
