@@ -21,4 +21,7 @@ public interface TurnoRepository {
 
     /** Todos los turnos de un médico (para construir la vista médico) */
     List<Turno> findByMedicoId(Long medicoId);
+
+    /** Todos los turnos de una fecha concreta (para la vista de hoy de secretaría) */
+    List<Turno> findByFecha(LocalDate fecha);
 }

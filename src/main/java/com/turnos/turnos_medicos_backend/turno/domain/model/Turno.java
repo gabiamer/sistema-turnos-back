@@ -59,4 +59,7 @@ public class Turno {
 
     @Column(name = "creado_en")
     private LocalDateTime creadoEn = LocalDateTime.now();
+
+    @Column(name = "agendado_por")
+    private Long agendadoPor;
 }

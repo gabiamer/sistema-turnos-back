@@ -139,6 +139,44 @@ turno/
 
 ---
 
+### Módulo `secretaria/`
+
+Implementa el caso de uso CU-07: la secretaria/recepcionista puede registrar pacientes, agendar turnos directamente (sin bloqueo temporal) y cancelar turnos con privilegios de rol.
+
+```
+secretaria/
+├── application/
+│   └── SecretariaService.java             — 5 métodos del caso de uso:
+│                                             · buscarPaciente(q): CI exacto o nombre/apellido ILIKE
+│                                             · registrarPaciente(): verifica CI único antes de crear
+│                                             · agendarTurnoDirecto(): crea turno CONFIRMADO directo,
+│                                               setea agendadoPor, verifica slot y duplicado del día
+│                                             · cancelarTurnoAdmin(): cancela sin restricción de 2h,
+│                                               motivo mínimo 10 chars
+│                                             · turnosHoy(): todos los turnos de la fecha actual
+│
+├── domain/
+│   ├── model/
+│   │   └── Recepcionista.java             — Entidad: recepcionista (nombre, apellido, email, rol)
+│   └── port/
+│       └── RecepcionistaRepository.java   — Puerto: findById, save, findAll
+│
+└── infrastructure/
+    ├── RecepcionistaRepositoryImpl.java   — Implementación JPA
+    └── SecretariaController.java          — REST /api/secretaria
+                                             POST   /pacientes          → 201 o 409
+                                             GET    /pacientes?q=       → 200 [Paciente]
+                                             POST   /turnos             → 201 {turnoId, estado, agendadoPor}
+                                             DELETE /turnos/{id}        → 204
+                                             GET    /turnos/hoy         → 200 [Turno]
+                                             Todos los endpoints validan header X-User-Role: SECRETARIA → 403
+```
+
+**Turno.java** — campo agregado en este sprint:
+- `agendadoPor (Long, nullable)` — ID de la recepcionista que creó el turno
+
+---
+
 ### Módulo `shared/`
 
 Puertos e implementaciones transversales usados por múltiples módulos.
