@@ -4,7 +4,7 @@ import com.turnos.turnos_medicos_backend.medico.domain.model.Medico;
 import com.turnos.turnos_medicos_backend.medico.domain.port.MedicoRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
-
+//lalala
 @Service
 public class MedicoService {
 
